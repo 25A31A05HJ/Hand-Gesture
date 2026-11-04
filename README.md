@@ -111,7 +111,7 @@ Open `http://localhost:3000` in Chrome.
 **Veera Purnima Venkata**
 
 - 📧 Email: purnimaveera678@gmail.com
-- 🐙 GitHub: [@YOUR-GITHUB-USERNAME](https://github.com/25A31A05HJ)
+- 🐙 GitHub: [https://github.com/25A31A05HJ]
 
 
 
