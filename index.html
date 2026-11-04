@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloom Presenter - control slides with your hands</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --yellow:#FFF6C2; --yellow2:#FFEB8A; --blue:#1F7FB8; --blue2:#4FC3F7; --sky:#87CEEB; --ink:#0F3550; --card:#FFFBE3;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,system-ui,sans-serif;color:var(--ink);background:var(--yellow);min-height:100vh}
+header{background:var(--sky);color:var(--ink);border-bottom:4px solid var(--blue);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:1.7rem;margin:0}
+header p{margin:0;font-size:.95rem;opacity:.95}
+main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+.stage{position:relative;aspect-ratio:16/9;background:#fff;border:4px solid var(--blue);border-radius:18px;overflow:hidden;box-shadow:8px 8px 0 var(--blue2)}
+.stage:fullscreen{border-radius:0;border:0;box-shadow:none}
+#slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:6%;background:linear-gradient(135deg,var(--yellow) 0%,#E3F4FC 100%);background-size:cover}
+#slide h2{font-family:Fraunces,Georgia,serif;font-size:clamp(1.6rem,4.2vw,3.6rem);margin:0 0 .4em;color:var(--blue);line-height:1.1}
+#slide p{font-size:clamp(1rem,2vw,1.6rem);margin:0;max-width:34em;line-height:1.5}
+#slide.img{background-color:#fff;background-repeat:no-repeat;background-position:center;background-size:contain}
+#draw{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#count{position:absolute;right:14px;bottom:10px;background:var(--blue);color:#fff;padding:4px 12px;border-radius:999px;font-weight:700}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--blue);color:#fff;padding:8px 18px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.on{opacity:1}
+aside{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:3px solid var(--blue);border-radius:14px;padding:14px}
+.card h3{margin:0 0 10px;font-family:Fraunces,Georgia,serif;font-size:1.1rem;color:var(--blue)}
+.cam{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#0F3550}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#mode{margin-top:10px;font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:inherit;font-weight:700;border:3px solid var(--blue);background:var(--blue);color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;position:relative;overflow:hidden}
+button.alt,.btn.alt{background:var(--yellow);color:var(--blue)}
+button.alt.dwell::after,.btn.alt.dwell::after{background:var(--blue2)}
+button:focus-visible,.btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button.dwell::after,.btn.dwell::after{content:"";position:absolute;left:0;bottom:0;height:5px;width:calc(var(--p,0)*100%);background:#FFD54F}
+.sw{width:38px;height:38px;border-radius:50%;padding:0;border:3px solid var(--blue)}
+.sw.sel{outline:3px solid var(--ink);outline-offset:2px}
+.sw[data-c="rainbow"]{background:conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)}
+label{font-weight:700;font-size:.9rem}
+input[type=range]{width:100%;accent-color:var(--blue)}
+ul{margin:0;padding-left:18px;line-height:1.6;font-size:.95rem}
+.cursor{position:fixed;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:4px solid var(--blue);background:rgba(255,255,255,.85);pointer-events:none;z-index:50;display:none}
+#cursor1{border-color:#E0A800;background:rgba(255,246,194,.9)}
+input[type=file]{display:none}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bloom Presenter</h1>
+  <p>Use either hand, or both. Point to plant flowers, swipe an open palm to change slides.</p>
+</header>
+
+<main>
+  <section>
+    <div class="stage" id="stage">
+      <div id="slide"></div>
+      <canvas id="draw"></canvas>
+      <div id="toast"></div>
+      <div id="count"></div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h3>Camera</h3>
+      <div class="cam"><video id="video" playsinline muted></video><canvas id="preview"></canvas></div>
+      <div id="mode">Camera is off.</div>
+      <div class="row" style="margin-top:10px"><button id="start" data-act>Start camera</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Slides</h3>
+      <div class="row">
+        <button data-act id="prev" class="alt">Previous</button>
+        <button data-act id="next">Next</button>
+        <button data-act id="full" class="alt">Fullscreen</button>
+        <label class="btn alt" for="files" tabindex="0">Upload slides (images)</label>
+        <input type="file" id="files" accept="image/*" multiple>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Flowers</h3>
+      <div class="row" id="palette"></div>
+      <div style="margin-top:10px"><label for="size">Flower size</label><input type="range" id="size" min="14" max="50" value="26"></div>
+      <div class="row" style="margin-top:10px">
+        <button data-act id="eraser" class="alt">Eraser</button>
+        <button data-act id="undo" class="alt">Undo</button>
+        <button data-act id="clear" class="alt">Clear</button>
+        <button data-act id="save">Save PNG</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Gestures</h3>
+      <ul>
+        <li>Works with your left hand, right hand, or both at once</li>
+        <li>One finger up: plant flowers</li>
+        <li>Two fingers up: move the ring over a button and hold to press it</li>
+        <li>Three fingers up: erase</li>
+        <li>Open palm, swipe right: next slide. Swipe left: previous</li>
+        <li>Fist: pause</li>
+        <li>Keyboard: arrows to move, C to clear, F for fullscreen</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+<div id="cursor0" class="cursor"></div>
+<div id="cursor1" class="cursor"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<script>
+const $ = s => document.querySelector(s);
+const W = 1280, H = 720;
+let slides = [
+  {t:"Welcome to Bloom Presenter", b:"Control your slides with a wave of your hand. Point at the screen to plant flowers."},
+  {t:"How it works", b:"Your webcam finds 21 points on your hand. Fingers up or down decide whether you draw, select, erase or swipe."},
+  {t:"Draw with flowers", b:"Raise one finger and move. Every few pixels a small flower blooms instead of a line."},
+  {t:"Change slides", b:"Open your palm and swipe sideways. Right goes forward, left goes back."},
+  {t:"Your turn", b:"Upload your own slide images from the Slides panel and present hands-free."}
+];
+let cur = 0, drawings = [], undo = [];
+const cv = $('#draw'), ctx = cv.getContext('2d');
+cv.width = W; cv.height = H;
+
+let color = '#29B6F6', eraser = false, size = 26, last = null;
+const COLORS = [['Sky blue','#29B6F6'],['Deep blue','#1565C0'],['Yellow','#FFC107'],['Pink','#E91E63'],['Orange','#FF9800'],['White','#FFFFFF'],['Rainbow','rainbow']];
+
+/* ---------- palette ---------- */
+const pal = $('#palette');
+COLORS.forEach(([name,c],i)=>{
+  const b = document.createElement('button');
+  b.className = 'sw' + (i===0?' sel':'');
+  b.dataset.act = ''; b.dataset.c = c; b.title = name; b.setAttribute('aria-label', name);
+  if (c !== 'rainbow') b.style.background = c;
+  b.onclick = () => { color = c; eraser = false; document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('sel', s===b)); toast(name + ' flowers'); };
+  pal.appendChild(b);
+});
+$('#size').oninput = e => size = +e.target.value;
+
+/* ---------- slides ---------- */
+function showSlide(i){
+  if (!slides.length) return;
+  drawings[cur] = cv.toDataURL();
+  cur = Math.max(0, Math.min(slides.length-1, i));
+  const el = $('#slide'), s = slides[cur];
+  if (s.img){ el.className='img'; el.style.backgroundImage = `url(${s.img})`; el.innerHTML=''; }
+  else { el.className=''; el.style.backgroundImage=''; el.innerHTML = `<h2>${s.t}</h2><p>${s.b}</p>`; }
+  ctx.clearRect(0,0,W,H);
+  if (drawings[cur]){ const im = new Image(); im.onload = () => ctx.drawImage(im,0,0); im.src = drawings[cur]; }
+  undo = [];
+  $('#count').textContent = `${cur+1} / ${slides.length}`;
+}
+function go(d){
+  const n = cur + d;
+  if (n < 0 || n >= slides.length){ toast(n<0 ? 'This is the first slide' : 'This is the last slide'); return; }
+  showSlide(n); toast(d>0 ? 'Next slide' : 'Previous slide');
+}
+$('#next').onclick = () => go(1);
+$('#prev').onclick = () => go(-1);
+$('#full').onclick = () => document.fullscreenElement ? document.exitFullscreen() : $('#stage').requestFullscreen();
+$('#files').onchange = e => {
+  const fs = [...e.target.files]; if (!fs.length) return;
+  slides = fs.map(f => ({img: URL.createObjectURL(f)}));
+  drawings = []; cur = 0; ctx.clearRect(0,0,W,H); showSlide(0); toast(slides.length + ' slides loaded');
+};
+
+/* ---------- flowers ---------- */
+function flower(x,y,s,c){
+  if (c === 'rainbow') c = `hsl(${Math.random()*360},85%,60%)`;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(Math.random()*6.28);
+  ctx.fillStyle = c; ctx.strokeStyle = 'rgba(15,53,80,.25)'; ctx.lineWidth = 1.5;
+  for (let i=0;i<6;i++){ ctx.rotate(Math.PI/3); ctx.beginPath(); ctx.ellipse(0,-s*.55,s*.28,s*.5,0,0,7); ctx.fill(); ctx.stroke(); }
+  ctx.beginPath(); ctx.fillStyle = '#FFE082'; ctx.strokeStyle = 'rgba(15,53,80,.35)'; ctx.arc(0,0,s*.28,0,7); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function pushUndo(){ undo.push(ctx.getImageData(0,0,W,H)); if (undo.length>20) undo.shift(); }
+function paint(x,y,st,forceErase){
+  const er = forceErase || eraser;
+  if (er){ ctx.save(); ctx.globalCompositeOperation='destination-out'; ctx.beginPath(); ctx.arc(x,y,size*1.8,0,7); ctx.fill(); ctx.restore(); return; }
+  if (!st.last){ pushUndo(); flower(x,y,size,color); st.last = {x,y}; }
+  else if (Math.hypot(x-st.last.x,y-st.last.y) >= size*1.5){ flower(x,y,size,color); st.last = {x,y}; }
+}
+const mouseState = {last:null};
+const endStroke = st => { if (st) st.last = null; };
+$('#eraser').onclick = () => { eraser = !eraser; toast(eraser ? 'Eraser on' : 'Flowers on'); };
+$('#undo').onclick = () => { const u = undo.pop(); if (u) ctx.putImageData(u,0,0); };
+$('#clear').onclick = () => { pushUndo(); ctx.clearRect(0,0,W,H); toast('Cleared'); };
+$('#save').onclick = () => { const a = document.createElement('a'); a.download = `flowers-slide-${cur+1}.png`; a.href = cv.toDataURL(); a.click(); };
+
+/* mouse / touch fallback so you can test without a camera */
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pt(e); });
+cv.addEventListener('pointermove', e => { if (e.buttons) pt(e); });
+cv.addEventListener('pointerup', () => endStroke(mouseState));
+function pt(e){ const r = cv.getBoundingClientRect(); paint((e.clientX-r.left)/r.width*W, (e.clientY-r.top)/r.height*H, mouseState); }
+
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(()=>el.classList.remove('on'), 1100); }
+
+document.addEventListener('keydown', e => {
+  if (e.key==='ArrowRight') go(1);
+  else if (e.key==='ArrowLeft') go(-1);
+  else if (e.key==='c'||e.key==='C') $('#clear').click();
+  else if (e.key==='f'||e.key==='F') $('#full').click();
+});
+
+/* ---------- hand tracking (both hands) ---------- */
+const video = $('#video'), pv = $('#preview'), pctx = pv.getContext('2d');
+const clamp = v => Math.max(0, Math.min(1, v));
+const remap = v => clamp((v - 0.1) / 0.8);
+const LABEL = {none:'No hand found', idle:'Fist: paused', draw:'Drawing flowers', select:'Select: hold the ring on a button', erase:'Erasing', palm:'Palm: swipe to change slide'};
+const NAMES = ['Left hand', 'Right hand'];
+let lastSwipe = 0;
+
+function newHand(i){
+  return {mode:'none', cand:'none', candN:0, sm:null, hist:[], hoverEl:null, hoverT:0, cool:0, last:null, cursor:$('#cursor'+i), seen:false};
+}
+const hands2 = [newHand(0), newHand(1)];
+
+function resetHand(h){
+  endStroke(h); clearHover(h); h.cursor.style.display = 'none';
+  h.hist = []; h.sm = null; h.mode = 'none'; h.cand = 'none'; h.candN = 0;
+}
+function clearHover(h){ if (h.hoverEl){ h.hoverEl.classList.remove('dwell'); h.hoverEl.style.removeProperty('--p'); h.hoverEl = null; } }
+function updateLabel(){
+  const parts = [];
+  hands2.forEach((h,i) => { if (h.seen) parts.push(NAMES[i] + ': ' + LABEL[h.mode]); });
+  const t = parts.length ? parts.join('  |  ') : LABEL.none;
+  if ($('#mode').textContent !== t) $('#mode').textContent = t;
+}
+
+function processHand(h, lm, now){
+  const up = (t,p) => lm[t].y < lm[p].y - 0.02;
+  const i = up(8,6), m = up(12,10), r = up(16,14), p = up(20,18);
+  let c = 'idle';
+  if (i && !m && !r && !p) c = 'draw';
+  else if (i && m && !r && !p) c = 'select';
+  else if (i && m && r && !p) c = 'erase';
+  else if (i && m && r && p) c = 'palm';
+  if (c === h.cand) h.candN++; else { h.cand = c; h.candN = 1; }
+  if (h.candN >= 3 && h.mode !== c){
+    if (h.mode === 'select') clearHover(h);
+    h.mode = c;
+  }
+
+  const nx = remap(1 - lm[8].x), ny = remap(lm[8].y);
+  h.sm = h.sm ? {x: h.sm.x*.55 + nx*.45, y: h.sm.y*.55 + ny*.45} : {x:nx, y:ny};
+
+  if (h.mode === 'draw' || h.mode === 'erase'){
+    const sr = $('#stage').getBoundingClientRect();
+    h.cursor.style.display = 'block';
+    h.cursor.style.left = (sr.left + h.sm.x*sr.width) + 'px'; h.cursor.style.top = (sr.top + h.sm.y*sr.height) + 'px';
+    paint(h.sm.x*W, h.sm.y*H, h, h.mode === 'erase');
+    if (h.mode === 'erase') h.last = null;
+    h.hist = []; clearHover(h);
+  } else if (h.mode === 'select'){
+    endStroke(h);
+    const x = h.sm.x*innerWidth, y = h.sm.y*innerHeight;
+    h.cursor.style.display = 'block'; h.cursor.style.left = x+'px'; h.cursor.style.top = y+'px';
+    const el = document.elementFromPoint(x,y);
+    const t = el && el.closest('[data-act]');
+    if (t !== h.hoverEl){ clearHover(h); h.hoverEl = t; h.hoverT = now; if (t) t.classList.add('dwell'); }
+    if (t && now > h.cool){
+      const prog = (now - h.hoverT) / 700; t.style.setProperty('--p', Math.min(1,prog));
+      if (prog >= 1){ t.click(); h.cool = now + 900; clearHover(h); }
+    }
+    h.hist = [];
+  } else if (h.mode === 'palm'){
+    endStroke(h); clearHover(h); h.cursor.style.display = 'none';
+    const x = 1 - lm[9].x;
+    h.hist.push([now, x]); h.hist = h.hist.filter(q => now - q[0] < 600);
+    if (now - lastSwipe > 1000 && h.hist.length > 3){
+      const dx = h.hist[h.hist.length-1][1] - h.hist[0][1];
+      if (Math.abs(dx) > 0.28){ go(dx > 0 ? 1 : -1); lastSwipe = now; hands2.forEach(o => o.hist = []); }
+    }
+  } else { endStroke(h); clearHover(h); h.cursor.style.display = 'none'; h.hist = []; }
+}
+
+function onResults(res){
+  pv.width = res.image.width; pv.height = res.image.height;
+  pctx.clearRect(0,0,pv.width,pv.height);
+  const found = res.multiHandLandmarks || [];
+  const labels = res.multiHandedness || [];
+  const now = performance.now();
+  const used = [false, false];
+
+  hands2.forEach(h => h.seen = false);
+
+  found.forEach((lm, k) => {
+    // The camera image is not mirrored, so MediaPipe's label is the opposite of the real hand.
+    const lab = labels[k] && labels[k].label;
+    let slot = lab === 'Left' ? 1 : lab === 'Right' ? 0 : k;
+    if (used[slot]) slot = used[0] ? 1 : 0;
+    used[slot] = true;
+    const h = hands2[slot];
+    h.seen = true;
+
+    pctx.fillStyle = slot === 0 ? '#87CEEB' : '#FFEB8A';
+    lm.forEach(pt => { pctx.beginPath(); pctx.arc(pt.x*pv.width, pt.y*pv.height, 4, 0, 7); pctx.fill(); });
+
+    processHand(h, lm, now);
+  });
+
+  hands2.forEach(h => { if (!h.seen && (h.sm || h.mode !== 'none')) resetHand(h); });
+  updateLabel();
+}
+function setMode(){ /* kept for compatibility, label is built in updateLabel() */ }
+
+$('#start').onclick = async () => {
+  const b = $('#start'); b.disabled = true; $('#mode').textContent = 'Loading hand model...';
+  try {
+    const hands = new Hands({locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
+    hands.setOptions({maxNumHands:2, modelComplexity:1, minDetectionConfidence:.7, minTrackingConfidence:.6});
+    hands.onResults(onResults);
+    const cam = new Camera(video, {onFrame: async () => { await hands.send({image: video}); }, width:640, height:480});
+    await cam.start();
+    b.textContent = 'Camera on';
+    updateLabel();
+  } catch (err){
+    b.disabled = false;
+    $('#mode').textContent = 'Camera blocked. Allow camera access in the address bar and try again (needs https or localhost).';
+  }
+};
+
+showSlide(0);
+</script>
+</body>
+</html>
