@@ -112,18 +112,7 @@ Open `http://localhost:3000` in Chrome.
 
 - 📧 Email: purnimaveera678@gmail.com
 - 🐙 GitHub: [@YOUR-GITHUB-USERNAME](https://github.com/25A31A05HJ)
-- 💼 LinkedIn: [YOUR NAME](https://www.linkedin.com/in/YOUR-LINKEDIN)
 
-## 🙏 Acknowledgements
 
-- [MediaPipe](https://developers.google.com/mediapipe) for the hand-tracking model
-- [Vercel](https://vercel.com) for free hosting
-- Google Fonts: Fraunces and Nunito
-
-## 📄 License
-
-This project is open source under the [MIT License](LICENSE).
-
----
 
 ⭐ If you like this project, please give it a star on GitHub!
