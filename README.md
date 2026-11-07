@@ -30,7 +30,7 @@ Tips: good light, plain background, keep hands about an arm's length from the ca
 Needs JDK 17+ and Maven. (Vercel ignores this folder.)
 ## 🌼 Live Demo
 
-**👉 https://YOUR-PROJECT.vercel.app**
+**👉https://vercel.com/tech-trio3/handgesture/8USvShsw4nSTdpuj2XqoAX1Sp4Yd**
 
 Open the link in Chrome or Edge, press **Start camera**, allow camera access, and control the slides with either hand.
 
@@ -115,4 +115,4 @@ Open `http://localhost:3000` in Chrome.
 
 
 
-⭐ If you like this project, please give it a star on GitHub!
+
